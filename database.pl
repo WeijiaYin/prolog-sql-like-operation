@@ -121,13 +121,23 @@ select_table(Table, Attribute, Value):-
     select_enroll(Attribute, Value).
 
 insert_student(Stu_id, Stu_name, Stu_faculty):-
+    dstudent(Stu_id,_,_)->fail;
     assertz(dstudent(Stu_id, Stu_name, Stu_faculty)),!.
 
+insert_student(Stu_id,_,_):-write(Stu_id),tab(1),write('already in the table'),fail,!.
+
 insert_course(Course_id, Course_name, Course_prof, Course_faculty):-
+    dcourse(Course_id,_,_,_)->fail;
     assertz(dcourse(Course_id, Course_name, Course_prof, Course_faculty)),!.
+insert_course(Course_id,_,_,_):-write(Course_id),tab(1),write('already in the table'),fail,!.
 
 insert_enroll(Stud_id, Course_id, Grade):-
+    denroll(Stud_id, Course_id, _)->fail;
+    dstudent(Stud_id,_,_),
+    dcourse(Course_id,_,_,_),
     assertz(denroll(Stud_id, Course_id, Grade)),!.
+insert_enroll(Stud_id, Course_id,_):-
+    write(Stud_id),tab(1),write(Course_id),tab(1),write('already in the table or does not have that course id or student id.'),fail,!.
 
 insert_table(Table, A1, A2, A3):-
     Table==student->
@@ -139,29 +149,32 @@ insert_table(course, A1, A2, A3, A4):-
 
 delete_student(Attribute, Value):-
     Attribute==stu_id->
-    retract(dstudent(Value,_,_)),!;
+    retract(dstudent(Value,_,_)),nl,fail;
     Attribute==stu_name->
-    retract(dstudent(_,Value,_)),!;
+    retract(dstudent(_,Value,_)),nl,fail;
     Attribute==stu_faculty->
-    retract(dstudent(_,_,Value)),!.
+    retract(dstudent(_,_,Value)),nl,fail.
+delete_student(_,_):-!.
 
 delete_course(Attribute, Value):-
     Attribute==course_id->
-    retract(dcourse(Value, _, _, _)),!;
+    retract(dcourse(Value, _, _, _)),nl,fail;
     Attribute==course_name->
-    retract(dcourse(_, Value, _, _)),!;
+    retract(dcourse(_, Value, _, _)),nl,fail;
     Attribute==course_prof->
-    retract(dcourse(_,_,Value,_)),!;
+    retract(dcourse(_,_,Value,_)),nl,fail;
     Attribute==course_faculty->
-    retract(dcourse(_,_,_,Value)),!.
+    retract(dcourse(_,_,_,Value)),nl,fail.
+delete_course(_,_):-!.
 
 delete_enroll(Attribute, Value):-
     Attribute==stu_id->
-    retract(denroll(Value,_,_)),!;
+    retract(denroll(Value,_,_)),nl,fail;
     Attribute==course_id->
-    retract(denroll(_,Value,_)),!;
+    retract(denroll(_,Value,_)),nl,fail;
     Attribute==grade->
-    retract(denroll(_,_,Value)),!.
+    retract(denroll(_,_,Value)),nl,fail.
+delete_enroll(_,_):-!.
 
 delete_table(Table, Attribute, Value):-
     Table==student->
@@ -199,35 +212,13 @@ update_student(Attribute1, Value1, Attribute2, Value2):-
         insert_student(X, Value2, Value1);
         Attribute2==stu_faculty->
         insert_student(X, Y, Value2)),!.
+update_student(_,_,_,_):-write('Can\'t find that record'),!.
 
-update_enroll(Attribute1, Value1, Attribute2, Value2):-
-    Attribute1==stu_id->
-    denroll(Value1, X, Y),
-    retract(denroll(Value1,_,_)),
-    (   Attribute2==stu_id->
-        insert_enroll(Value2,X,Y);
-        Attribute2==course_id->
-        insert_enroll(Value1, Value2, Y);
-        Attribute2==grade->
-        insert_enroll(Value1, X, Value2));
-    Attribute1==course_id->
-    denroll(X, Value1, Y),
-    retract(denroll(_,Value1,_)),
-    (   Attribute2==stu_id->
-        insert_enroll(Value2,Value1,Y);
-        Attribute2==course_id->
-        insert_enroll(X, Value2, Y);
-        Attribute2==grade->
-        insert_enroll(X, Value1, Value2));
-    Attribute1==gradde->
-    denroll(X,Y,Value1),
-    retract(denroll(_,_,Value1)),
-    (   Attribute2==stu_id->
-        insert_enroll(Value2,Y,Value1);
-        Attribute2==course_id->
-        insert_enroll(X, Value2, Value1);
-        Attribute2==grade->
-        insert_enroll(X, Y, Value2)),!.
+update_enroll(Stu_id, Course_id, Grade):-
+    denroll(Stu_id,Course_id,_),
+    retract(denroll(Stu_id,Course_id,_)),
+    insert_enroll(Stu_id,Course_id,Grade),!.
+update_enroll(_,_,_):-write('Can\'t find that record.'),!.
 
 update_course(Attribute1, Value1, Attribute2, Value2):-
     Attribute1==course_id->
@@ -275,14 +266,15 @@ update_course(Attribute1, Value1, Attribute2, Value2):-
         insert_course(X,Y,Value2,Value1);
         Attribute2==course_faculty->
         insert_course(X,Y,Z,Value2)),!.
+update_course(_,_,_,_):-write('Can\'t find that record.'),!.
 
 update_table(Table, Attribute1, Value1, Attribute2, Value2):-
     Table==student->
     update_student(Attribute1, Value1, Attribute2, Value2);
     Table==course->
-    update_course(Attribute1, Value1, Attribute2, Value2);
-    Table==enroll->
-    update_enroll(Attribute1, Value1, Attribute2, Value2).
+    update_course(Attribute1, Value1, Attribute2, Value2).
+update_table(enroll,Stu_id,Course_id,Grade):-
+    update_enroll(Stu_id, Course_id, Grade).
 
 join(Course_id):-
     write('Stu_id Stu_name Course_id Course_name grade'),nl,
@@ -293,11 +285,20 @@ join(Course_id):-
 
 join(_):-!.
 
-average_grade(Course_id):-
+average_grade(Attribute, Value):-
+    Attribute==course_id->
     aggregate(r(count, sum(Grade)),
-             Stu_id^Course_id^denroll(Stu_id, Course_id, Grade),
+             Stu_id^Value^denroll(Stu_id, Value, Grade),
               r(Count, Sum)),
     Count >0,
     Average is Sum/Count,
-    write(Average).
+    write(Average);
+    Attribute==stu_id->
+    aggregate(r(count, sum(Grade)),
+             Value^Course_id^denroll(Value, Course_id, Grade),
+              r(Count, Sum)),
+    Count >0,
+    Average is Sum/Count,
+    write(Average),!.
 
+average_grade(_,_):-write('Can\'t find that record.'),nl.
